@@ -1,12 +1,13 @@
-Changes:
+bcftools
 	problem with dynamic link library, cygwin needs to see all function reference during linking
 		provide function reference in linking
 		htslib_default_libs = -lz -lm -lbz2 -llzma
 		LIBS     = $(htslib_default_libs)
+		HTSLIB = $(HTSDIR)/libhts.a
 		HTSLIBDLL = $(HTSDIR)/libhts.dll.a
 		
 		%.cygdll: %.c version.h version.c
-			$(CC) $(PLUGIN_FLAGS) $(CFLAGS) $(ALL_CPPFLAGS) $(EXTRA_CPPFLAGS) $(LDFLAGS) -o $@ version.c $< libbcftools.cygdll.a $(HTSLIBDLL) $(LIBS)
+			$(CC) $(PLUGIN_FLAGS) $(CFLAGS) $(ALL_CPPFLAGS) $(EXTRA_CPPFLAGS) $(LDFLAGS) -o $@ version.c $< libbcftools.a $(HTSLIB) $(LIBS)
 		
 		Makefile structure:
 		
@@ -39,7 +40,7 @@ Changes:
 		this generates an archive of compiled library (ar), with index (ranlib), as a static library
 		
 		cyghts-$(LIBHTS_SOVERSION).dll: $(BCF_OBJS) $(HTSLIBDLL)
-			$(CC) -shared -Wl,--out-implib=libbcftools.cygdll.a -Wl,--export-all-symbols -Wl,--enable-auto-import $(LDFLAGS) -o $@ -Wl,--whole-archive $(BCF_OBJS) -Wl,--no-whole-archive $(HTSLIBDLL) $(ALL_LIBS) $(GSL_LIBS) -lpthread
+			$(CC) -shared -Wl,--out-implib=libbcftools.dll.a -Wl,--export-all-symbols -Wl,--enable-auto-import $(LDFLAGS) -o $@ -Wl,--whole-archive $(BCF_OBJS) -Wl,--no-whole-archive $(HTSLIB) $(ALL_LIBS) $(GSL_LIBS) -lpthread
 		
 		this generates a dynamic link library
 		

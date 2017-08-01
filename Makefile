@@ -149,7 +149,7 @@ libbcftools.a: $(BCF_OBJS)
 	-$(RANLIB) $@
 
 cyghts-$(LIBHTS_SOVERSION).dll: $(BCF_OBJS) $(HTSLIBDLL)
-	$(CC) -shared -Wl,--out-implib=libbcftools.cygdll.a -Wl,--export-all-symbols -Wl,--enable-auto-import $(LDFLAGS) -o $@ -Wl,--whole-archive $(BCF_OBJS) -Wl,--no-whole-archive $(HTSLIBDLL) $(ALL_LIBS) $(GSL_LIBS) -lpthread
+	$(CC) -shared -Wl,--out-implib=libbcftools.dll.a -Wl,--export-all-symbols -Wl,--enable-auto-import $(LDFLAGS) -o $@ -Wl,--whole-archive $(BCF_OBJS) -Wl,--no-whole-archive $(HTSLIBDLL) $(ALL_LIBS) $(GSL_LIBS) -lpthread
 
 bcftools: $(OBJS) $(HTSLIB_LIB)
 	$(CC) $(DYNAMIC_FLAGS) -pthread $(ALL_LDFLAGS) -o $@ $(OBJS) $(HTSLIB_LIB) -lm $(ALL_LIBS) $(GSL_LIBS)
@@ -176,7 +176,7 @@ vcfplugin.o: EXTRA_CPPFLAGS += -DPLUGINPATH='"$(pluginpath)"'
 	$(CC) $(PLUGIN_FLAGS) $(CFLAGS) $(ALL_CPPFLAGS) $(EXTRA_CPPFLAGS) $(LDFLAGS) -o $@ version.c $< $(LIBS)
 
 %.cygdll: %.c version.h version.c
-	$(CC) $(PLUGIN_FLAGS) $(CFLAGS) $(ALL_CPPFLAGS) $(EXTRA_CPPFLAGS) $(LDFLAGS) -o $@ version.c $< libbcftools.cygdll.a $(HTSLIBDLL) $(LIBS)
+	$(CC) $(PLUGIN_FLAGS) $(CFLAGS) $(ALL_CPPFLAGS) $(EXTRA_CPPFLAGS) $(LDFLAGS) -o $@ version.c $< libbcftools.a $(HTSLIB) $(LIBS)
 
 -include $(PLUGINM)
 
@@ -303,7 +303,7 @@ install: libbcftools.a $(PROG) $(PLUGINS)
 
 install-cygdll: cyghts-$(LIBHTS_SOVERSION).dll
 	$(INSTALL_PROGRAM) cyghts-$(LIBHTS_SOVERSION).dll $(DESTDIR)$(bindir)/cyghts-$(LIBHTS_SOVERSION).dll
-	$(INSTALL_PROGRAM) libbcftools.cygdll.a $(DESTDIR)$(libdir)/libbcftools.cygdll.a
+	$(INSTALL_PROGRAM) libbcftools.dll.a $(DESTDIR)$(libdir)/libbcftools.dll.a
 	
 clean: testclean clean-plugins
 	-rm -f gmon.out *.o *~ $(PROG) version.h plugins/*.so plugins/*.P

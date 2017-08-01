@@ -206,13 +206,13 @@ static void *dlopen_plugin(args_t *args, const char *fname)
     init_plugin_paths(args);
 
     void *handle;
-    char *tmp;
+    char *tmp;    
     if ( fname[0]!='/' )    // not an absolute path
     {
-        int i;
+        int i;        
         for (i=0; i<args->nplugin_paths; i++)
         {
-	    tmp = msprintf("%s/%s%s", args->plugin_paths[i], fname, PLUGIN_EXT);
+	    		tmp = msprintf("%s/%s%s", args->plugin_paths[i], fname, PLUGIN_EXT);	    		
             handle = dlopen(tmp, RTLD_NOW); // valgrind complains about unfreed memory, not our problem though
             if ( args->verbose > 1 )
             {
@@ -223,7 +223,7 @@ static void *dlopen_plugin(args_t *args, const char *fname)
             if ( handle ) return handle;
         }
     }
-
+    
     handle = dlopen(fname, RTLD_NOW);
     if ( args->verbose > 1 )
     {
