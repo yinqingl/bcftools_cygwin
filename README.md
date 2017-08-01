@@ -1,5 +1,5 @@
-This is a modified repository for BCFtools. It contains changes for installation of BCFtools in cygwin environment.
-Yinqing Li, yinqingl@csail.mit.edu, 2017
+This is a modified repository for BCFtools. It contains changes for installation of BCFtools in cygwin environment. 
+Yinqing Li, yinqingl@csail.mit.edu, 2017 
 
 Changes:
 	problem with dynamic link library, cygwin needs to see all function reference during linking
