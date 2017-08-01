@@ -23,16 +23,18 @@
 # DEALINGS IN THE SOFTWARE.
 
 CC       = gcc
+AR     = ar
+RANLIB = ranlib
 CPPFLAGS =
 CFLAGS   = -g -Wall -Wc++-compat -O2
-LDFLAGS  =
-LIBS     =
+LDFLAGS  = 
+LIBS     = 
 
 DYNAMIC_FLAGS = -rdynamic
 PLUGINS_ENABLED = yes
 PLUGIN_EXT = .so
 
-OBJS     = main.o vcfindex.o tabix.o \
+BCF_OBJS     =  bcftools.o vcfindex.o tabix.o \
            vcfstats.o vcfisec.o vcfmerge.o vcfquery.o vcffilter.o filter.o vcfsom.o \
            vcfnorm.o vcfgtcheck.o vcfview.o vcfannotate.o vcfroh.o vcfconcat.o \
            vcfcall.o mcall.o vcmp.o gvcf.o reheader.o convert.o vcfconvert.o tsv2vcf.o \
@@ -41,6 +43,8 @@ OBJS     = main.o vcfindex.o tabix.o \
            mpileup.o bam2bcf.o bam2bcf_indel.o bam_sample.o \
            vcfsort.o \
            ccall.o em.o prob1.o kmin.o # the original samtools calling
+
+OBJS = main.o libbcftools.a
 
 prefix      = /usr/local
 exec_prefix = $(prefix)
@@ -73,7 +77,7 @@ MISC_SCRIPTS = \
     misc/vcfutils.pl
 TEST_PROGRAMS = test/test-rbuf test/test-regidx
 
-all: $(PROGRAMS) $(TEST_PROGRAMS) plugins
+all: lib-static lib-shared $(PROGRAMS) $(TEST_PROGRAMS) plugins
 
 ALL_CPPFLAGS = -I. $(HTSLIB_CPPFLAGS) $(CPPFLAGS)
 ALL_LDFLAGS  = $(HTSLIB_LDFLAGS) $(LDFLAGS)
@@ -94,6 +98,7 @@ endif
 include config.mk
 
 PACKAGE_VERSION = 1.5
+LIBHTS_SOVERSION = 2
 
 # If building from a Git repository, replace $(PACKAGE_VERSION) with the Git
 # description of the working tree: either a release tag with the same value
@@ -134,7 +139,19 @@ ifdef USE_GPL
     GSL_LIBS ?= -lgsl -lcblas
 endif
 
-bcftools: $(OBJS) $(HTSLIB)
+lib-static: libbcftools.a
+
+lib-shared: cyghts-$(LIBHTS_SOVERSION).dll
+
+libbcftools.a: $(BCF_OBJS)
+	@-rm -f $@
+	$(AR) -rc $@ $(BCF_OBJS)
+	-$(RANLIB) $@
+
+cyghts-$(LIBHTS_SOVERSION).dll: $(BCF_OBJS) $(HTSLIBDLL)
+	$(CC) -shared -Wl,--out-implib=libbcftools.cygdll.a -Wl,--export-all-symbols -Wl,--enable-auto-import $(LDFLAGS) -o $@ -Wl,--whole-archive $(BCF_OBJS) -Wl,--no-whole-archive $(HTSLIBDLL) $(ALL_LIBS) $(GSL_LIBS) -lpthread
+
+bcftools: $(OBJS) $(HTSLIB_LIB)
 	$(CC) $(DYNAMIC_FLAGS) -pthread $(ALL_LDFLAGS) -o $@ $(OBJS) $(HTSLIB_LIB) -lm $(ALL_LIBS) $(GSL_LIBS)
 
 # Plugin rules
@@ -150,13 +167,16 @@ ifeq "$(PLATFORM)" "Darwin"
 $(PLUGINS): | bcftools
 PLUGIN_FLAGS = -bundle -bundle_loader bcftools
 else
-PLUGIN_FLAGS = -fPIC -shared
+PLUGIN_FLAGS = -fpic -shared
 endif
 
 vcfplugin.o: EXTRA_CPPFLAGS += -DPLUGINPATH='"$(pluginpath)"'
 
 %.so: %.c version.h version.c
 	$(CC) $(PLUGIN_FLAGS) $(CFLAGS) $(ALL_CPPFLAGS) $(EXTRA_CPPFLAGS) $(LDFLAGS) -o $@ version.c $< $(LIBS)
+
+%.cygdll: %.c version.h version.c
+	$(CC) $(PLUGIN_FLAGS) $(CFLAGS) $(ALL_CPPFLAGS) $(EXTRA_CPPFLAGS) $(LDFLAGS) -o $@ version.c $< libbcftools.cygdll.a $(HTSLIBDLL) $(LIBS)
 
 -include $(PLUGINM)
 
@@ -188,6 +208,7 @@ bam2bcf_h = bam2bcf.h $(htslib_hts_h) $(htslib_vcf_h)
 bam_sample_h = bam_sample.h $(htslib_sam_h)
 
 main.o: main.c $(htslib_hts_h) config.h version.h $(bcftools_h)
+bcftools.o: bcftools.c version.h $(bcftools_h)
 vcfannotate.o: vcfannotate.c $(htslib_vcf_h) $(htslib_synced_bcf_reader_h) $(htslib_kseq_h) $(bcftools_h) vcmp.h $(filter_h)
 vcfplugin.o: vcfplugin.c config.h $(htslib_vcf_h) $(htslib_synced_bcf_reader_h) $(htslib_kseq_h) $(bcftools_h) vcmp.h $(filter_h)
 vcfcall.o: vcfcall.c $(htslib_vcf_h) $(htslib_kfunc_h) $(htslib_synced_bcf_reader_h) $(htslib_khash_str2int_h) $(bcftools_h) $(call_h) $(prob1_h) $(ploidy_h)
@@ -272,13 +293,18 @@ docs: doc/bcftools.1 doc/bcftools.html
 # bcftools.1 is a generated file from the asciidoc bcftools.txt file.
 # Since there is no make dependency, bcftools.1 can be out-of-date and
 # make docs can be run to update if asciidoc is available
-install: $(PROG) $(PLUGINS)
+install: libbcftools.a $(PROG) $(PLUGINS)
 	$(INSTALL_DIR) $(DESTDIR)$(bindir) $(DESTDIR)$(man1dir) $(DESTDIR)$(plugindir)
 	$(INSTALL_PROGRAM) $(PROGRAMS) $(DESTDIR)$(bindir)
 	$(INSTALL_SCRIPT) $(MISC_SCRIPTS) $(DESTDIR)$(misc_bindir)
 	$(INSTALL_MAN) doc/bcftools.1 $(DESTDIR)$(man1dir)
-	$(INSTALL_PROGRAM) plugins/*.so $(DESTDIR)$(plugindir)
+	$(INSTALL_PROGRAM) plugins/*.cygdll $(DESTDIR)$(plugindir)
+	$(INSTALL_DATA) libbcftools.a $(DESTDIR)$(libdir)/libbcftools.a
 
+install-cygdll: cyghts-$(LIBHTS_SOVERSION).dll
+	$(INSTALL_PROGRAM) cyghts-$(LIBHTS_SOVERSION).dll $(DESTDIR)$(bindir)/cyghts-$(LIBHTS_SOVERSION).dll
+	$(INSTALL_PROGRAM) libbcftools.cygdll.a $(DESTDIR)$(libdir)/libbcftools.cygdll.a
+	
 clean: testclean clean-plugins
 	-rm -f gmon.out *.o *~ $(PROG) version.h plugins/*.so plugins/*.P
 	-rm -rf *.dSYM plugins/*.dSYM test/*.dSYM
